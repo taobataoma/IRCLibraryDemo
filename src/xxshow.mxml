@@ -1,0 +1,682 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   backgroundColor="#FFFFFF" creationComplete="init()">
+	<fx:Style source="xxshow.css"/>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.oldhawk.events.*;
+			import com.oldhawk.library.*;
+			
+			import flash.media.H264Level;
+			import flash.media.H264Profile;
+			import flash.media.H264VideoStreamSettings;
+			
+			import mx.controls.Alert;
+			import mx.core.FlexGlobals;
+			import mx.managers.PopUpManager;
+			
+			/**
+			 * public var 
+			 */
+			public var irc:IRC=new IRC();
+
+			/**
+			 * private var
+			 */
+			private var ncOut:NetConnection;
+			private var nsOut:NetStream;
+			private var vOut:Video;
+			
+			private var videoUrl:String;
+			private var videoStream:String;
+			private var videoRecord:Boolean;
+			
+			private var active_mic:Microphone;
+			private var active_Camera:Camera;
+
+			private var showDebugMsg:Boolean = false;
+			private var showDebugMsgMore:Boolean =false;
+			private var usePrefixString:Boolean = false;
+			
+			public var avWin:avWindow;
+			/**
+			 * globals parameters
+			 */
+			private var serverAddress:String;
+			private var serverPort:int;
+			private var serverPass:String;
+			private var userHost:String;
+			private var userInfo:String;
+			private var userName:String;
+			private var displayName:String;
+			private var channelName:String;
+			private var extendInfo:String;
+			private var httpPrefix:String;
+			
+			private var micRate:int;
+			private var micGain:int;
+			private var micSilenceLevel:int;
+			private var micSilenceTimeout:int;
+			private var micLoopBack:Boolean;
+			
+			private var cameraKeyFrameInterval:int;
+			private var cameraModeHeight:int;
+			private var cameraModeWidth:int;
+			private var cameraModeFps:int;
+			private var cameraModeFavorArea:Boolean;
+			private var cameraMotionLevel:int;
+			private var cameraMotionLevelTimeOut:int;
+			private var cameraBandwidth:int;
+			private var cameraQuality:int;
+			
+			private var pbBufferTime:int;			
+			private var plBufferTime:int;
+
+			private var objectEncodingAMF3:Boolean;
+			/**
+			 * application 入口
+			 */
+			private function init():void{
+				flash.system.Security.allowDomain("*");
+				System.useCodePage = true;
+				//register callback
+				this.registerCallback();
+			}
+			/**
+			 * 获取所有从页面传过来的变量
+			 */
+			private function getGlobalsParameters():void{
+				this.serverAddress = FlexGlobals.topLevelApplication.parameters.serverAddress;
+				onDebugParaMsg("serverAddress=" + this.serverAddress);
+				
+				this.serverPort = int(FlexGlobals.topLevelApplication.parameters.serverPort);
+				onDebugParaMsg("serverPort=" + this.serverPort);
+
+				this.serverPass = FlexGlobals.topLevelApplication.parameters.serverPass;
+				onDebugParaMsg("serverPass=" + this.serverPass);
+
+				this.userHost = FlexGlobals.topLevelApplication.parameters.userHost;
+				onDebugParaMsg("userHost=" + this.userHost);
+
+				this.userInfo = FlexGlobals.topLevelApplication.parameters.userInfo;
+				onDebugParaMsg("userInfo=" + this.userInfo);
+
+				this.userName = FlexGlobals.topLevelApplication.parameters.userName;
+				onDebugParaMsg("userName=" + this.userName);
+
+				this.displayName = FlexGlobals.topLevelApplication.parameters.displayName;
+				onDebugParaMsg("displayName=" + this.displayName);
+
+				this.channelName = FlexGlobals.topLevelApplication.parameters.channelName;
+				onDebugParaMsg("channelName=" + this.channelName);
+
+				this.extendInfo = FlexGlobals.topLevelApplication.parameters.extendInfo;
+				onDebugParaMsg("extendInfo=" + this.extendInfo);
+				
+				this.httpPrefix = FlexGlobals.topLevelApplication.parameters.httpPrefix;
+				onDebugParaMsg("httpPrefix=" + this.httpPrefix);
+				
+				this.micRate = int(FlexGlobals.topLevelApplication.parameters.micRate);
+				onDebugParaMsg("micRate=" + this.micRate);
+				
+				this.micGain = int(FlexGlobals.topLevelApplication.parameters.micGain);
+				onDebugParaMsg("micGain=" + this.micGain);
+				
+				this.micSilenceLevel = int(FlexGlobals.topLevelApplication.parameters.micSilenceLevel);
+				onDebugParaMsg("micSilenceLevel=" + this.micSilenceLevel);
+				
+				this.micSilenceTimeout = int(FlexGlobals.topLevelApplication.parameters.micSilenceTimeout);
+				onDebugParaMsg("micSilenceTimeout=" + this.micSilenceTimeout);
+				
+				this.micLoopBack = (FlexGlobals.topLevelApplication.parameters.micLoopBack.toUpperCase()) == "TRUE";
+				onDebugParaMsg("micLoopBack=" + this.micLoopBack);
+								
+				this.cameraKeyFrameInterval = int(FlexGlobals.topLevelApplication.parameters.cameraKeyFrameInterval);
+				onDebugParaMsg("cameraKeyFrameInterval=" + this.cameraKeyFrameInterval);
+				
+				this.cameraModeHeight = int(FlexGlobals.topLevelApplication.parameters.cameraModeHeight);
+				onDebugParaMsg("cameraModeHeight=" + this.cameraModeHeight);
+				
+				this.cameraModeWidth = int(FlexGlobals.topLevelApplication.parameters.cameraModeWidth);
+				onDebugParaMsg("cameraModeWidth=" + this.cameraModeWidth);
+				
+				this.cameraModeFps = int(FlexGlobals.topLevelApplication.parameters.cameraModeFps);
+				onDebugParaMsg("cameraModeFps=" + this.cameraModeFps);
+
+				this.cameraModeFavorArea = (FlexGlobals.topLevelApplication.parameters.cameraModeFavorArea.toUpperCase()) == "TRUE";
+				onDebugParaMsg("cameraModeFavorArea=" + this.cameraModeFavorArea);
+								
+				this.cameraMotionLevel = int(FlexGlobals.topLevelApplication.parameters.cameraMotionLevel);
+				onDebugParaMsg("cameraMotionLevel=" + this.cameraMotionLevel);
+				
+				this.cameraMotionLevelTimeOut = int(FlexGlobals.topLevelApplication.parameters.cameraMotionLevelTimeOut);
+				onDebugParaMsg("cameraMotionLevelTimeOut=" + this.cameraMotionLevelTimeOut);
+				
+				this.cameraBandwidth = int(FlexGlobals.topLevelApplication.parameters.cameraBandwidth);
+				onDebugParaMsg("cameraBandwidth=" + this.cameraBandwidth);
+				
+				this.cameraQuality = int(FlexGlobals.topLevelApplication.parameters.cameraQuality);
+				onDebugParaMsg("cameraQuality=" + this.cameraQuality);
+				
+				this.pbBufferTime = int(FlexGlobals.topLevelApplication.parameters.pbBufferTime);
+				onDebugParaMsg("pbBufferTime=" + this.pbBufferTime);
+				
+				this.plBufferTime = int(FlexGlobals.topLevelApplication.parameters.plBufferTime);
+				onDebugParaMsg("plBufferTime=" + this.plBufferTime);
+				
+				this.objectEncodingAMF3 = (FlexGlobals.topLevelApplication.parameters.objectEncodingAMF3.toUpperCase()) == "TRUE";
+				onDebugParaMsg("objectEncodingAMF3=" + this.objectEncodingAMF3);
+				
+			}
+			
+			/**
+			 * 
+			 * 
+			 */
+			private function registerCallback():void{
+				ExternalInterface.addCallback("openIRC", openIRC);
+				ExternalInterface.addCallback("sendMsg", sendMsg);
+				ExternalInterface.addCallback("setIRCDebugMode", setIRCDebugMode);
+				ExternalInterface.addCallback("setIRCUsePrefixString", setIRCUsePrefixString);
+				ExternalInterface.addCallback("publishVideo", publishVideo);
+				ExternalInterface.addCallback("stopPublishVideo", stopPublishVideo);
+				ExternalInterface.addCallback("playVideo", playVideo);
+				ExternalInterface.addCallback("stopPlayVideo", stopPlayVideo);
+				
+				ExternalInterface.call("onReady");
+			}
+			
+			/**
+			 * 初始化irc的回调事件
+			 */
+			public function openIRC():void{
+				//get all globals params
+				this.getGlobalsParameters();
+
+				irc.hostName=this.serverAddress;
+				irc.port=this.serverPort;
+				irc.addEventListener(IRCSocketEvents.ONCLOSE, onClose);
+				irc.addEventListener(IRCSocketEvents.ONCONNECT,onConnect);
+				irc.addEventListener(IRCSocketEvents.ONIOERROR, onError);
+				irc.addEventListener(IRCSocketEvents.ONSECURITYERROR, onError);
+				irc.addEventListener(IRCSocketEvents.ONDEBUGRECVMSG, onDebugRecvMsg);
+				irc.addEventListener(IRCSocketEvents.ONDEBUGSENDMSG, onDebugSendMsg);
+				irc.addEventListener(IRCSocketEvents.ONDEBUGSTATMSG, onDebugStatMsg);
+				irc.addEventListener(IRCCMDEvents.ONPINGCOMMAND, onPing);
+				irc.addEventListener(IRCCMDEvents.ONNUMCOMMAND, onNumCommand);
+				irc.addEventListener(IRCCMDEvents.ONTXTCOMMAND, onTxtCommand);
+				irc.open();
+			}
+			/**
+			 * 设置IRC服务器的调试模式
+			 * @mod:Boolean 	返回调试消息
+			 * @more:Boolean 	返回更详细的调试消息
+			 */
+			public function setIRCDebugMode(debug:Boolean,moreDebug:Boolean):void{
+				irc.showDebugMsg = this.showDebugMsg = debug;
+				irc.showDebugMsgMore = this.showDebugMsgMore = moreDebug;
+			}
+			
+			/**
+			 * 设置IRC服务器是否使用前缀消息
+			 * 因为有些消息可能不以\r\n结尾，那么这些消息将被当作发送不完全的内容来对待，会自动接到下一个消息的前面
+			 */
+			public function setIRCUsePrefixString(usePrefix:Boolean):void{
+				irc.usePrefixString = this.usePrefixString = usePrefix;
+			}
+			/**
+			 * IRC EVENT: Close
+			 * 收到此事件，表示已经与服务器断开连接了
+			 */
+			private function onClose(evt:IRCSocketEvents):void{
+				ExternalInterface.call("onClose");
+			}
+			/**
+			 * IRC EVENT: Connect
+			 * 收到此事件，表示已经与服务器建立socket连接
+			 * 此时，就需要依照IRC协议开始发送相关的IRC命令了
+			 */
+			private function onConnect(evt:IRCSocketEvents):void{
+				irc.loginNick = this.userName;
+				irc.loginUser = this.displayName;
+				irc.loginPass = this.serverPass;
+				irc.loginInfo = this.userInfo;
+				irc.loginExtendInfo = this.extendInfo;
+				irc.doIdent();
+				this.sendMsg("PROTOCTL UHNAMES");
+				ExternalInterface.call("onConnect");
+			}
+			/**
+			 * IRC Command: PING
+			 * Return Command: PONG
+			 * event.msg 收到的消息原路返回
+			 */
+			private function onPing(event:IRCCMDEvents):void{
+				this.sendMsg("PONG :"+event.msg);
+				ExternalInterface.call("onPing");
+			}
+			/**
+			 * IRC 数字消息处理事件
+			 * event事件参数
+			 * event.user
+			 * event.cmd
+			 * event.msg
+			 */
+			private function onNumCommand(event:IRCCMDEvents):void{
+				ExternalInterface.call("onNumCommand", event.cmd, event.msg);
+			}
+			/**
+			 * IRC 文字命令处理事件
+			 * event事件参数
+			 * event.user
+			 * event.cmd
+			 * event.msg
+			 */
+			private function onTxtCommand(event:IRCCMDEvents):void{
+				ExternalInterface.call("onTxtCommand", event.cmd, event.user, event.msg);
+			}
+			/**
+			 * IRC ERROR Message
+			 */
+			private function onError(evt:IRCSocketEvents):void{
+				ExternalInterface.call("onError", evt.msg);
+			}
+			/**
+			 * 向debugWindow添加收到的调试信息
+			 * 在debug模式关闭时，不会收到此消息
+			 * @evt.msg 收到的消息
+			 */
+			private function onDebugRecvMsg(evt:IRCSocketEvents):void{
+				ExternalInterface.call("onDebugRecvMsg", evt.msg);
+			}
+			/**
+			 * 向debugWindow添加收到的调试信息
+			 * 在debug模式关闭时，不会收到此消息
+			 * @evt.msg 收到的消息
+			 */
+			private function onDebugSendMsg(evt:IRCSocketEvents):void{
+				ExternalInterface.call("onDebugSendMsg", evt.msg);
+			}
+			/**
+			 * 向debugWindow添加收到的参数信息
+			 * 在debug模式关闭时，不会收到此消息
+			 * @evt.msg 收到的消息
+			 */
+			private function onDebugParaMsg(msg:String):void{
+				if(showDebugMsg){
+					ExternalInterface.call("onDebugParaMsg", msg);
+				}
+			}
+			/**
+			 * 向debugWindow添加收到的视频信息
+			 * 在debug模式关闭时，不会收到此消息
+			 * @evt.msg 收到的消息
+			 */
+			private function onDebugVideoMsg(msg:String):void{
+				if(showDebugMsg){
+					ExternalInterface.call("onDebugVideoMsg", msg);
+				}
+			}
+			/**
+			 * 向debugWindow添加收到的调试信息
+			 * 在debug模式关闭时，不会收到此消息
+			 * @evt.msg 收到的消息
+			 */
+			private function onDebugStatMsg(evt:IRCSocketEvents):void{
+				ExternalInterface.call("onDebugStatMsg", evt.msg);
+			}
+			/**
+			 * 向消息窗口添加收到的调试信息
+			 * 在debug模式关闭时，不会收到此消息
+			 * @evt.msg 收到的消息
+			 */			
+			private function addVideoMsg(msg:String):void{
+				ExternalInterface.call("onAddVideoMsg", msg);
+			}
+			/**
+			 *	@msg: 要发送的消息 
+			 */
+			public function sendMsg(msg:String):void{
+				irc.send(msg);
+			}
+			/*==========================================================================
+			*	Video about
+			*===========================================================================*/			
+			/**
+			 * publish video
+			 */
+			private function publishVideo(videoUrl:String, videoStream:String, record:Boolean):void{
+				this.videoUrl = videoUrl;
+				this.videoStream = videoStream;
+				this.videoRecord = record;
+				
+				this.onDebugVideoMsg("videoUrl=" + videoUrl);
+				this.onDebugVideoMsg("videoStream=" + videoStream);
+
+				addVideoMsg("*** 正在连接视频服务器，请稍候...");
+				ncOut = new NetConnection();
+				if(objectEncodingAMF3){
+					ncOut.objectEncoding = ObjectEncoding.AMF3;
+				}else{
+					ncOut.objectEncoding = ObjectEncoding.AMF0;					
+				}
+				ncOut.addEventListener(NetStatusEvent.NET_STATUS, ncOutStatus);
+				ncOut.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
+				
+				var clientObj:Object = new Object();
+				clientObj.onBWCheck = onBWCheck;
+				clientObj.onBWDone = onBWDone;
+				ncOut.client = clientObj;
+				
+				ncOut.connect(this.videoUrl);
+			}
+			private function stopPublishVideo():void{
+				if(vOut) this.vOut.attachCamera(null);
+				if(ncOut)
+					addVideoMsg("*** 视频已结束");
+				
+				if(vOut){
+					vOut.attachCamera(null);
+					vOut.clear();	
+					vOut.visible=false;
+				}
+				if(nsOut) nsOut.close();
+				if(ncOut) ncOut.close();
+				
+				ExternalInterface.call("onPublishEnd");
+			}
+			private function ncOutStatus(evt:NetStatusEvent):void{
+				this.onDebugVideoMsg("-------------------------------------------");
+				this.onDebugVideoMsg("NetConnection - "+evt.toString());
+				for (var prop:String in evt.info) {
+					this.onDebugVideoMsg(prop+":"+evt.info[prop]);
+				}
+				
+				if(evt.info.code=="NetConnection.Connect.Success"){
+					addVideoMsg("*** 连接视频服务器成功");
+					//检测带宽
+					//ncOut.call("checkBandwidth", null); 
+					//开始发布音视频
+					publish_ready();
+				}else if(evt.info.code=="NetConnection.Connect.Failed"){
+					addVideoMsg("*** 连接失败，请检查视频服务器是否正在运行，如有需要请向管理员求助");
+					ExternalInterface.call("onPublishEnd");
+				}else if(evt.info.code=="NetConnection.Connect.Rejected"){
+					addVideoMsg("*** 连接失败，视频服务器拒绝连接，如有需要请向管理员求助");
+					ExternalInterface.call("onPublishEnd");
+				}else if(evt.info.code=="NetConnection.Connect.Closed"){
+					addVideoMsg("*** 与视频服务器断开连接");
+					if(vOut){
+						vOut.attachCamera(null);
+						vOut.clear();
+						vOut.visible=false;
+					}
+					if(avWin){
+						PopUpManager.removePopUp(avWin);
+					}
+					ExternalInterface.call("onPublishEnd");
+				}
+			}
+			
+			private function securityErrorHandler(evt:SecurityErrorEvent):void {
+				this.onDebugVideoMsg("-------------------------------------------");
+				this.onDebugVideoMsg("SecurityErrorEvent - "+evt.toString());
+			}
+			
+			private function onBWCheck(... rest):Boolean {
+				this.onDebugVideoMsg("-------------------------------------------");
+				//this.onDebugVideoMsg("onBWCheck - "+rest.toString());
+				this.onDebugVideoMsg("bandwidth check OK"); 
+				return true;
+			}
+			
+			private function onBWDone(... rest):Number {
+				this.onDebugVideoMsg("-------------------------------------------");
+				this.onDebugVideoMsg("onBWDone - "+rest.toString());
+				var bandwidthTotal:Number; 
+				if (rest.length > 0){ 
+					bandwidthTotal = rest[0]; 
+					// This code runs 
+					// when the bandwidth check is complete. 
+					this.onDebugVideoMsg("bandwidth done = " + bandwidthTotal + " Kbps."); 
+				} 
+				return 0;
+			}
+			private function publish_ready():void{
+				this.onDebugVideoMsg("Camera.names.length =" + Camera.names.length);
+				this.onDebugVideoMsg("Microphone.names.length =" + Microphone.names.length);
+
+				if(Camera.names.length>1 || Microphone.names.length>1){
+					avWin = avWindow(PopUpManager.createPopUp(this, avWindow, true));
+					avWin.cwin=this;
+					PopUpManager.centerPopUp(avWin);
+				}else{
+					this.publish_video(-1,-1);
+				}
+			}
+			
+			public function publish_video(vidx:Number,aidx:Number):void{
+				this.onDebugVideoMsg("-------------------------------------------");
+				this.onDebugVideoMsg("vidx="+vidx.toString()+",aidx="+aidx.toString());
+				
+				if(vidx>=0){
+					active_Camera = Camera.getCamera(vidx.toString());
+				}else{
+					active_Camera = Camera.getCamera();
+				}
+				if (!active_Camera){
+					addVideoMsg("*** 没有找到可用的摄像头");
+				}
+//				else if(active_Camera.muted){
+//					addVideoMsg("*** 你的摄像头已被禁止访问");
+//				}
+				
+				if(aidx>=0){
+					active_mic = Microphone.getMicrophone(aidx);
+				}else{
+					active_mic = Microphone.getMicrophone();
+				}
+//				if(Capabilities.version.search('10,3') == -1){
+//					active_mic = Microphone.getMicrophone();
+//				}else{
+//					active_mic = Microphone(Microphone['getEnhancedMicrophone']());
+//					var options:MicrophoneEnhancedOptions = new MicrophoneEnhancedOptions();
+//					options.mode = MicrophoneEnhancedMode.FULL_DUPLEX;
+//					options.autoGain = false;
+//					options.echoPath = 128;
+//					options.nonLinearProcessing = true;
+//					active_mic['enhancedOptions'] = options;
+//				}
+				if (!active_mic){
+					addVideoMsg("*** 没有找到可用的麦克");
+				}
+
+//				else if(active_mic.muted){
+//					addVideoMsg("*** 你的麦克已被禁止访问");
+//				}
+				
+				//发布视频流		
+				if (active_mic){
+					active_mic.rate=this.micRate;
+					active_mic.gain=this.micGain;
+					active_mic.codec = SoundCodec.SPEEX;
+					active_mic.setSilenceLevel(this.micSilenceLevel, this.micSilenceTimeout);
+					active_mic.setLoopBack(this.micLoopBack);
+					active_mic.setUseEchoSuppression(true);
+				}
+				
+				if(active_Camera){
+					active_Camera.setKeyFrameInterval(this.cameraKeyFrameInterval);
+					active_Camera.setMode(this.cameraModeWidth, this.cameraModeHeight, this.cameraModeFps, this.cameraModeFavorArea);
+					active_Camera.setMotionLevel(this.cameraMotionLevel, this.cameraMotionLevelTimeOut);
+					active_Camera.setQuality(this.cameraBandwidth, this.cameraQuality);
+				}
+				
+				nsOut = new NetStream(ncOut);
+				
+				var h264Settings:H264VideoStreamSettings = new H264VideoStreamSettings();
+				h264Settings.setProfileLevel(H264Profile.BASELINE , H264Level.LEVEL_5_1);
+				h264Settings.setMode(this.cameraModeWidth,this.cameraModeHeight,this.cameraModeFps);
+				h264Settings.setQuality(this.cameraBandwidth,this.cameraQuality);
+				h264Settings.setKeyFrameInterval(this.cameraKeyFrameInterval);
+				
+				nsOut.videoStreamSettings = h264Settings;
+			
+				nsOut.addEventListener(NetStatusEvent.NET_STATUS,nsOutStatus);
+				nsOut.addEventListener(IOErrorEvent.IO_ERROR,nsOutIoError);
+				nsOut.addEventListener(AsyncErrorEvent.ASYNC_ERROR,nsOutAsyncError);
+				nsOut.bufferTime=this.pbBufferTime;
+				
+				if (active_mic){
+					nsOut.attachAudio(active_mic);
+				}
+				if(active_Camera){
+					nsOut.attachCamera(active_Camera);
+				}
+				
+				nsOut.publish(this.videoStream,this.videoRecord ? "record" : "live");
+				
+				if(active_Camera){
+					vOut = new Video(); 
+					vOut.x = 0; 
+					vOut.y = 0; 
+					vOut.deblocking = 0;
+					vOut.smoothing = true;
+					vOut.attachCamera(this.active_Camera); 
+				
+					vOut.width=this.videoView.width;
+					vOut.height=this.videoView.height;
+					this.videoView.addChild(vOut);
+				}
+			}
+			private function nsOutStatus(evt:NetStatusEvent):void{
+				var desc:String;
+				var pos:Number;
+				
+				this.onDebugVideoMsg("-------------------------------------------");
+				this.onDebugVideoMsg("NetStream - "+evt.toString());
+				for (var prop:String in evt.info) {
+					this.onDebugVideoMsg(prop+":"+evt.info[prop]);
+				}
+				
+				//addVideoMsg("*** 视频服务器"+evt.info.code+"");			    
+				if(evt.info.code=="NetStream.Publish.Start"){
+					desc=evt.info.description;
+					pos=desc.indexOf(" ");
+					addVideoMsg("*** 视频开始...");
+					
+					ExternalInterface.call("onPublishBegin");
+				}else if(evt.info.code=="NetStream.Publish.BadName"){
+					desc=evt.info.description;
+					pos=desc.lastIndexOf(" ");
+					addVideoMsg("*** 错误的视频ID号"+desc.substr(pos+1,desc.length));
+					if(ncOut) ncOut.close();
+					if(nsOut) nsOut.close();
+
+					ExternalInterface.call("onPublishEnd");
+				}
+			}	
+			private function nsOutIoError(evt:IOErrorEvent):void{
+				this.onDebugVideoMsg("-------------------------------------------");
+				this.onDebugVideoMsg("IOErrorEvent - "+evt.toString());
+			}
+			private function nsOutAsyncError(evt:AsyncErrorEvent):void{
+				this.onDebugVideoMsg("-------------------------------------------");
+				this.onDebugVideoMsg("AsyncErrorEvent - "+evt.toString());
+			}
+			
+			/**
+			 * play video
+			 */
+			private function playVideo(videoUrl:String, videoStream:String):void{
+				this.videoUrl = videoUrl;
+				this.videoStream = videoStream;
+				
+				this.onDebugVideoMsg("videoUrl=" + videoUrl);
+				this.onDebugVideoMsg("videoStream=" + videoStream);
+				
+				addVideoMsg("*** 正在连接视频服务器，请稍候...");
+				ncOut = new NetConnection();
+				if(objectEncodingAMF3){
+					ncOut.objectEncoding = ObjectEncoding.AMF3;
+				}else{
+					ncOut.objectEncoding = ObjectEncoding.AMF0;					
+				}
+				ncOut.addEventListener(NetStatusEvent.NET_STATUS, ncPlayStatus);
+				ncOut.connect(this.videoUrl);
+			}
+			private function ncPlayStatus(evt:NetStatusEvent):void{
+				this.onDebugVideoMsg("-------------------------------------------");
+				this.onDebugVideoMsg("NetConnection - "+evt.toString());
+				for (var prop:String in evt.info) {
+					this.onDebugVideoMsg(prop+":"+evt.info[prop]);
+				}
+				
+				if(evt.info.code=="NetConnection.Connect.Success"){
+					addVideoMsg("*** 连接视频服务器成功");
+					nsOut = new NetStream(ncOut);
+					nsOut.addEventListener(NetStatusEvent.NET_STATUS,nsPlayStatus);					
+					nsOut.bufferTime=this.plBufferTime;
+					
+					var tras:SoundTransform;
+					tras=new SoundTransform(0.8);
+					nsOut.soundTransform=tras;
+					
+					vOut = new Video(); 
+					vOut.x = 0; 
+					vOut.y = 0; 
+					vOut.width = this.videoView.width; 
+					vOut.height = this.videoView.height; 
+					vOut.deblocking = 0;
+					vOut.smoothing = true;
+					vOut.attachNetStream(nsOut); 
+					
+					nsOut.play(this.videoStream); 
+					this.videoView.addChild(vOut);
+				}else if(evt.info.code=="NetConnection.Connect.Closed"){
+					addVideoMsg("*** 与视频服务器断开连接");
+					if(vOut){
+						vOut.attachCamera(null);
+						vOut.clear();
+						vOut.visible=false;
+					}
+					ExternalInterface.call("onPlayEnd");
+				}
+			}
+			private function nsPlayStatus(evt:NetStatusEvent):void{
+				this.onDebugVideoMsg("-------------------------------------------");
+				this.onDebugVideoMsg("NetStream - "+evt.toString());
+				for (var prop:String in evt.info) {
+					this.onDebugVideoMsg(prop+":"+evt.info[prop]);
+				}
+
+				if(evt.info.code=="NetStream.Play.Start"){
+					addVideoMsg("*** 视频播放开始");
+					ExternalInterface.call("onPlayBegin");
+				}
+			}
+			private function stopPlayVideo():void{
+				if(vOut) this.vOut.attachCamera(null);
+				if(ncOut)
+					addVideoMsg("*** 视频已结束");
+				
+				if(vOut){
+					vOut.clear();	
+					vOut.visible=false;
+				}
+				if(nsOut) nsOut.close();
+				if(ncOut) ncOut.close();
+				
+				ExternalInterface.call("onPlayEnd");
+			}
+
+		]]>
+	</fx:Script>
+	<s:VideoDisplay id="videoView" left="0" right="0" top="0" bottom="0" chromeColor="#FFFFFF"/>
+</s:Application>

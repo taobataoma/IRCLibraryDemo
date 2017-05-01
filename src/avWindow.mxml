@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" 
+				layout="absolute" 
+				width="308" 
+				height="188" 
+				creationComplete="init();" 
+				close="onButtonCancelClick(null);" 
+				showCloseButton="true" 
+				title="请选择媒体设备" fontSize="12" defaultButton="{buttonCancel}">
+	<mx:Script>
+		<![CDATA[
+			import mx.controls.Alert;
+			import mx.managers.PopUpManager;
+			public var cwin:xxshow;
+			
+			private function init():void{
+				this.buttonCancel.addEventListener(MouseEvent.CLICK,onButtonCancelClick);
+				
+				this.listV.dataProvider=Camera.names;
+				this.liseA.dataProvider=Microphone.names;
+			}
+			private function onButtonCancelClick(event:MouseEvent):void{
+				cwin.publish_video(this.listV.selectedIndex,this.liseA.selectedIndex);
+				PopUpManager.removePopUp(this);
+				cwin.avWin = null;
+			}			
+		]]>
+	</mx:Script>
+	<mx:Label x="23" y="10" text="请选择你发布音视频时使用的硬件设备："/>
+	<mx:Label x="23" y="38" text="视频设备："/>
+	<mx:ComboBox x="85" y="38" width="188" id="listV"></mx:ComboBox>
+    <mx:Label x="23" y="66" text="音频设备："/>
+    <mx:ComboBox x="85" y="66" width="188" id="liseA"></mx:ComboBox>
+    <mx:ControlBar horizontalAlign="right" height="48">
+        <mx:Button label="确定" id="buttonCancel" height="24"/>
+    </mx:ControlBar>
+</mx:TitleWindow>
