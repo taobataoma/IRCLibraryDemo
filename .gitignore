@@ -1,0 +1,17 @@
+bin-debug/*.*
+bin-release/*.*
+.settings/org.eclipse.core.resources.prefs
+bin-debug/fonts/Brush Script.ttf
+bin-debug/fonts/huawenxihei.ttf
+bin-debug/fonts/华文细黑.ttf
+bin-debug/history/history.css
+bin-debug/history/history.js
+bin-debug/history/historyFrame.html
+bin-debug/images/logo48.png
+bin-debug/images/uicon.png
+bin-release/fonts/Brush Script.ttf
+bin-release/fonts/huawenxihei.ttf
+bin-release/history/history.css
+bin-release/history/history.js
+bin-release/history/historyFrame.html
+bin-release/images/uicon.png
